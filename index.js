@@ -85,6 +85,10 @@ fetchPoliticianUrls('https://www.capitoltrades.com/politicians')
 
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 
 wss.on('open', function() {
     console.log("WebSocket connected");
