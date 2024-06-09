@@ -17,33 +17,33 @@ const alpaca = new Alpaca({
 
 async function getCurrentStocks() {
     // Get a list of all of our positions.
-    const currentStocks = [];
-    alpaca.getPositions().then((portfolio) => {
+    let currentStocks = [];
+    try {
+        let portfolio = await alpaca.getPositions();
         // Print the quantity of shares for each position.
         portfolio.forEach(function (position) {
             //console.log(`${position.qty} shares of ${position.symbol}`);
             currentStocks.push(position.symbol);
         });
         return currentStocks;
-    });
+    } catch (error) {
+        console.error("Error fetching positions: ", error);
+    }
 }
 
-//// Makes Trades ////
+//// Get Current Buying Power ////
 
-const Trader = {
-    buyStock(stock) {
-        alpaca.createOrder({
-            symbol: stock,
-            qty: 2,
-            side: 'buy',
-            type: 'market',
-            time_in_force: 'day'
-        })
-    },
-    sellStock(stock) {
-        alpaca.closePosition(stock)
+async function getBuyingPower() {
+    let buyingPower = 0;
+    try {
+        let account = await alpaca.getAccount();
+        buyingPower = account.buying_power
+        //console.log(`$${buyingPower} is available as buying power.`)
+        return buyingPower
+    } catch (error) {
+        console.error("Error fetching buying power: ", error)
     }
-};
+}
 
 //// Create Politician Class ////
 
@@ -75,7 +75,7 @@ async function fetchPoliticianUrls(politicianUrl) {
     // politician.
     const urlMap = new Map();
 
-    for (let i = 1; i < 19; i++) {
+    for (let i = 1; i < 2; i++) {
         // Loads the necessary website materials
         const response = await axios(politicianUrl + "?page=" + i.toString());
         const html = response.data;
@@ -101,13 +101,35 @@ async function processUrl(url, name) {
         const $ = cheerio.load(html);
 
         const trades = $('.q-field.issuer-ticker').map((i, el) => $(el).text().trim().split(':')[0]).get();
-        const buyOrSell = $('.q-field.tx-type').map((i, el) => ({ type: $(el).text().trim() })).get();
-        const companyName = $('.q-fieldset.issuer-name').map((i, el) => ({ company: $(el).text().trim() })).get();
-        const dateTraded = $('.q-td.q-column--txDate').map((i, el) => ({ date: $(el).text().trim() })).get();
-
+        const buyOrSell = $('.q-field.tx-type').map((i, el) => $(el).text().trim()).get();
+        const companyName = $('.q-fieldset.issuer-name').map((i, el) => $(el).text().trim()).get();
+        const dateTraded = $('.q-td.q-column--txDate').map((i, el) => $(el).text().trim()).get();
         const politician = new Politician(name,trades[0],buyOrSell[0],companyName[0],dateTraded[0])
-        console.log(politician)
-        return politician;
+
+        /// Get Current Stock Information and Buying Power ////
+        let currentStocks = await getCurrentStocks();
+        let buyingPower = await getBuyingPower()
+
+        /// Buy or Sell Stocks ///
+        if (!currentStocks.includes(trades[0]) && politician.getPosition() === 'buy' && trades[0] !== 'N/A') {
+            // alpaca.createOrder({
+            //     symbol: trades[0].toString(),
+            //     qty: 1,
+            //     side: 'buy',
+            //     type: "market",
+            //     time_in_force: "day"
+            // })
+            console.log("Bought Stock: " + trades[0])
+        } else if (currentStocks.includes(trades[0]) && politician.getPosition() === 'sell'  && trades[0] !== 'N/A') {
+            // alpaca.createOrder({
+            //     symbol: trades[0].toString(),
+            //     qty: 1,
+            //     side: 'sell',
+            //     type: "market",
+            //     time_in_force: "day"
+            // })
+            console.log("Sold Stock: " + trades[0])
+        }
     } catch (err) {
         console.log("error")
     }
@@ -123,4 +145,5 @@ async function main() {
         console.error('Error processing URLs:', err);
     }
 }
+
 main();
