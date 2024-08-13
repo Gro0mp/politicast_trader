@@ -7,9 +7,10 @@ const axios = require('axios');
 const app = express();
 
 const Alpaca = require('@alpacahq/alpaca-trade-api');
+const {readFile} = require("node:fs");
 const alpaca = new Alpaca({
-    keyId: process.env.API_KEY,
-    secretKey: process.env.SECRET_API_KEY,
+    keyId: process.env.APCA_API_KEY_ID,
+    secretKey: process.env.APCA_API_SECRET_KEY,
     paper: true,
 });
 
@@ -25,11 +26,37 @@ async function getCurrentStocks() {
             //console.log(`${position.qty} shares of ${position.symbol}`);
             currentStocks.push(position.symbol);
         });
+        //console.log(currentStocks)
         return currentStocks;
     } catch (error) {
         console.error("Error fetching positions: ", error);
     }
 }
+
+//getCurrentStocks()
+
+/// Get Current Awaiting Orders ///
+
+async function getAwaitingOrders() {
+    let awaitingOrders = [];
+    try {
+        let orders = await alpaca.getOrders()
+        let i = 0;
+        // Print the quantity of shares for each position.
+        orders.forEach(function (position) {
+            if (!awaitingOrders.includes(orders[i].symbol)) {
+                awaitingOrders.push(orders[i].symbol);
+            }
+            i++;
+        });
+        //console.log(awaitingOrders)
+        return awaitingOrders;
+    } catch (error) {
+        console.error("Error fetching positions: ", error);
+    }
+}
+
+//getAwaitingOrders()
 
 //// Get Current Buying Power ////
 
@@ -44,6 +71,8 @@ async function getBuyingPower() {
         console.error("Error fetching buying power: ", error)
     }
 }
+
+//getBuyingPower()
 
 //// Create Politician Class ////
 
@@ -87,7 +116,6 @@ async function fetchPoliticianUrls(politicianUrl) {
             urlMap.set(`https://www.capitoltrades.com${url}`, name.trim());
         });
     }
-    //console.log(urlMap);
     return urlMap;
 }
 
@@ -108,27 +136,31 @@ async function processUrl(url, name) {
 
         /// Get Current Stock Information and Buying Power ////
         let currentStocks = await getCurrentStocks();
-        let buyingPower = await getBuyingPower()
+        let awaitingStocks = await getAwaitingOrders();
+        let buyingPower = await getBuyingPower();
+        let realStock = false;
+
+        readFile("C://Users//denni//Coding Projects//web-scraper//all_tickers.txt", function (err, data) {
+            if (err) throw err;
+            if(data.includes(politician.getStock())) {
+                realStock = true;
+            }
+        });
 
         /// Buy or Sell Stocks ///
-        if (!currentStocks.includes(trades[0]) && politician.getPosition() === 'buy' && trades[0] !== 'N/A') {
-            // alpaca.createOrder({
-            //     symbol: trades[0].toString(),
-            //     qty: 1,
-            //     side: 'buy',
-            //     type: "market",
-            //     time_in_force: "day"
-            // })
-            console.log("Bought Stock: " + trades[0])
-        } else if (currentStocks.includes(trades[0]) && politician.getPosition() === 'sell'  && trades[0] !== 'N/A') {
-            // alpaca.createOrder({
-            //     symbol: trades[0].toString(),
-            //     qty: 1,
-            //     side: 'sell',
-            //     type: "market",
-            //     time_in_force: "day"
-            // })
-            console.log("Sold Stock: " + trades[0])
+        if (!currentStocks.includes(politician.getStock().toString()) && !awaitingStocks.includes(politician.getStock().toString()) && politician.getPosition() === 'buy' && politician.getStock() !== 'N/A' && realStock === true) {
+            alpaca.createOrder({
+                symbol: trades[0].toString(),
+                // notional: buyingPower * 0.9,
+                qty: 1,
+                side: 'buy',
+                type: "market",
+                time_in_force: 'day'
+            })
+            console.log("Bought Stock: " + politician.getStock() + " from " + politician.getName())
+        } else if (currentStocks.includes(politician.getStock().toString()) && politician.getPosition() === 'sell'  && politician.getStock() !== 'N/A') {
+            alpaca.closePosition(politician.getStock().toString())
+            console.log("Sold Stock: " + politician.getStock())
         }
     } catch (err) {
         console.log("error")
@@ -140,10 +172,12 @@ async function main() {
     try {
         const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
         await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
+        let currentStocks = await getCurrentStocks();
+        console.log("Currently held positions: " + currentStocks)
         app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
     } catch (err) {
         console.error('Error processing URLs:', err);
     }
 }
 
-main();
+//main()
