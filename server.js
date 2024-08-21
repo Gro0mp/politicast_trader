@@ -1,3 +1,6 @@
+import { CronJob} from "cron";
+const functions = require('firebase-functions');
+
 const fs = require('fs').promises
 const PORT = 8000;
 
@@ -161,8 +164,6 @@ async function processUrl(url, name) {
                 console.log(`Failed to Buy: ${politician.getStock()} is already in the current portfolio.`);
             } else if (awaitingStocks.includes(politician.getStock().toString())) {
                 console.log(`Failed to Buy: ${politician.getStock()} is already in awaiting orders.`);
-            } else if (politician.getStock() === 'N/A') {
-                console.log(`Failed to Buy: Stock symbol is 'N/A'.`);
             } else {
                 await alpaca.createOrder({
                     symbol: trades[0].toString(),
@@ -191,18 +192,37 @@ async function processUrl(url, name) {
 }
 
 
-async function main() {
-    try {
-        const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
-        await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
-        let currentStocks = await getCurrentStocks();
-        let awaitingOrders = await getAwaitingOrders()
-        console.log("Currently held positions: " + currentStocks)
-        console.log("Awaiting Orders: " + awaitingOrders)
-        app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
-    } catch (err) {
-        console.error('Error processing URLs:', err);
-    }
-}
+// async function main() {
+//     try {
+//         const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
+//         await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
+//         let currentStocks = await getCurrentStocks();
+//         let awaitingOrders = await getAwaitingOrders()
+//         console.log("Currently held positions: " + currentStocks)
+//         console.log("Awaiting Orders: " + awaitingOrders)
+//         //app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
+//     } catch (err) {
+//         console.error('Error processing URLs:', err);
+//     }
+// }
 
-main()
+exports.trader = functions
+    .runWith({ memory: '4GB'})
+    .pubsub.schedule('0 10 * * 1-5')
+    .timeZone('America/New_York')
+    .onRun(async (ctx) => {
+        console.log('This will run M-F at 10:00 AM Eastern!');
+
+        try {
+            const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
+            await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
+            let currentStocks = await getCurrentStocks();
+            let awaitingOrders = await getAwaitingOrders()
+            console.log("Currently held positions: " + currentStocks)
+            console.log("Awaiting Orders: " + awaitingOrders)
+            //app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
+        } catch (err) {
+            console.error('Error processing URL:', err);
+        }
+    });
+
