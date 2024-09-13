@@ -1,4 +1,3 @@
-import { CronJob} from "cron";
 const functions = require('firebase-functions');
 
 const fs = require('fs').promises
@@ -16,7 +15,7 @@ const alpaca = new Alpaca({
     secretKey: process.env.APCA_API_SECRET_KEY,
     paper: true,
 });
-
+ 
 //// Check if Stock is Real ////
 
 async function isRealStock(stock) {
@@ -224,5 +223,6 @@ exports.trader = functions
         } catch (err) {
             console.error('Error processing URL:', err);
         }
+        return null;
     });
 
