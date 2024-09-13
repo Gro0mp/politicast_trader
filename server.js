@@ -11,8 +11,8 @@ const app = express();
 
 const Alpaca = require('@alpacahq/alpaca-trade-api');
 const alpaca = new Alpaca({
-    keyId: process.env.APCA_API_KEY_ID,
-    secretKey: process.env.APCA_API_SECRET_KEY,
+    keyId: process.env.APCA_API_KEY_ID, // Add personal alpaca api key
+    secretKey: process.env.APCA_API_SECRET_KEY, // Add personal alpaca secret key
     paper: true,
 });
  
@@ -47,7 +47,6 @@ async function getCurrentStocks() {
     }
 }
 
-//getCurrentStocks()
 
 /// Get Current Awaiting Orders ///
 
@@ -70,8 +69,6 @@ async function getAwaitingOrders() {
     }
 }
 
-//getAwaitingOrders()
-
 //// Get Current Buying Power ////
 
 async function getBuyingPower() {
@@ -86,7 +83,6 @@ async function getBuyingPower() {
     }
 }
 
-//getBuyingPower()
 
 //// Create Politician Class ////
 
@@ -191,38 +187,43 @@ async function processUrl(url, name) {
 }
 
 
-// async function main() {
-//     try {
-//         const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
-//         await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
-//         let currentStocks = await getCurrentStocks();
-//         let awaitingOrders = await getAwaitingOrders()
-//         console.log("Currently held positions: " + currentStocks)
-//         console.log("Awaiting Orders: " + awaitingOrders)
-//         //app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
-//     } catch (err) {
-//         console.error('Error processing URLs:', err);
-//     }
-// }
+async function main() {
+    try {
+        const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
+        await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
+        let currentStocks = await getCurrentStocks();
+        let awaitingOrders = await getAwaitingOrders()
+        console.log("Currently held positions: " + currentStocks)
+        console.log("Awaiting Orders: " + awaitingOrders)
+        //app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
+    } catch (err) {
+        console.error('Error processing URLs:', err);
+    }
+}
 
-exports.trader = functions
-    .runWith({ memory: '4GB'})
-    .pubsub.schedule('0 10 * * 1-5')
-    .timeZone('America/New_York')
-    .onRun(async (ctx) => {
-        console.log('This will run M-F at 10:00 AM Eastern!');
+main()
 
-        try {
-            const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
-            await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
-            let currentStocks = await getCurrentStocks();
-            let awaitingOrders = await getAwaitingOrders()
-            console.log("Currently held positions: " + currentStocks)
-            console.log("Awaiting Orders: " + awaitingOrders)
-            //app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
-        } catch (err) {
-            console.error('Error processing URL:', err);
-        }
-        return null;
-    });
 
+/// To run the program continuously, must connect with a firebase account.
+
+// exports.trader = functions
+//     .runWith({ memory: '4GB'})
+//     .pubsub.schedule('0 10 * * 1-5')
+//     .timeZone('America/New_York')
+//     .onRun(async (ctx) => {
+//         console.log('This will run M-F at 10:00 AM Eastern!');
+//
+//         try {
+//             const urlMap = await fetchPoliticianUrls('https://www.capitoltrades.com/politicians');
+//             await Promise.all(Array.from(urlMap.entries()).map(([url, name]) => processUrl(url, name)));
+//             let currentStocks = await getCurrentStocks();
+//             let awaitingOrders = await getAwaitingOrders()
+//             console.log("Currently held positions: " + currentStocks)
+//             console.log("Awaiting Orders: " + awaitingOrders)
+//             //app.listen(PORT, () => console.log(`Server running on PORT ${PORT}`));
+//         } catch (err) {
+//             console.error('Error processing URL:', err);
+//         }
+//         return null;
+//     });
+//
